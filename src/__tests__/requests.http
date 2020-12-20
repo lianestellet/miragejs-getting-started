@@ -1,0 +1,4 @@
+@host = http://localhost:3000/api
+
+GET {{host}}/reminders HTTP/1.1
+Accept: application/json, text/javascript
