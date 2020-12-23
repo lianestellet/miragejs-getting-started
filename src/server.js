@@ -1,63 +1,86 @@
-import { createServer, Model, hasMany, belongsTo, RestSerializer } from 'miragejs';
+import { createServer, Model, hasMany, belongsTo, RestSerializer, Factory, trait } from 'miragejs';
 
 export default function () {
-    createServer({
+	createServer({
+		serializers: {
+			reminder: RestSerializer.extend({
+				include: ["list"],
+				embed: true
+			})
+		},
 
-        serializers: {
-            reminder: RestSerializer.extend({
-                include: ["list"],
-                embed: true
-            })
-        },
+		models: {
+			list: Model.extend({
+				reminders: hasMany(),
+			}),
+			reminder: Model.extend({
+				list: belongsTo(),
+			})
+		},        
 
-        models: {
-            list: Model.extend({
-                reminders: hasMany(),
-            }),
-            reminder: Model.extend({
-                list: belongsTo(),
-            })
-        },        
+		factories: {
+			list: Factory.extend({
+				name(i) {
+					return `List ${i}`;
+				},
 
-        seeds(server) {
-            server.create("reminder", { text: "Walk the dog" });
-            server.create("reminder", { text: "Take out the trash" });
-            server.create("reminder", { text: "Work out" });
+				withReminders: trait({
+						afterCreate(list, server) {
+							server.createList('reminder', 5, { list })
+					}
+				})
+			}),
 
-            let homeList = server.create("list", { name: "Home" });
-            server.create("reminder", { list: homeList, text: "Do taxes" });
+			reminder: Factory.extend({
+				text(i){
+					return `Reminder ${i}`;
+				}
+			}),
+		},
 
-            let workList = server.create("list", { name: "Work" });
-            server.create("reminder", { list: workList, text: "Visit bank " });
-        },
+		seeds(server) {
+			server.create("reminder", { text: "Walk the dog" });
+			server.create("reminder", { text: "Take out the trash" });
+			server.create("reminder", { text: "Work out" });
+		
+			server.create("list", {
+				name: "Home",
+				reminders: [server.create("reminder", { text: "Do taxes" })],
+			});
+		
+			server.create("list", {
+				name: "Work",
+				reminders: [server.create("reminder", { text: "Visit bank" })],
+			});
+		},
 
-        routes() {
-            this.get("/api/lists", (schema, request) => {
-                return schema.lists.all()
-            })
+		routes() {
+			this.get("/api/lists", (schema, request) => {
+				return schema.lists.all()
+			});
 
-            this.get("/api/lists/:id/reminders", (schema, request) => {
-                let listId = request.params.id
-                let list = schema.lists.find(listId)
+			this.get("/api/lists/:id/reminders", (schema, request) => {
+				let listId = request.params.id
+				let list = schema.lists.find(listId)
 
-                return list.reminders
-            })
-            
-            this.get("/api/reminders", (schema) => {
-               return schema.reminders.all()
-            })
+				return list.reminders
+			});
+			
+			this.get("/api/reminders", (schema) => {
+				return schema.reminders.all()
+			});
 
-            this.post("/api/reminders", (schema, request) => {
-                let attrs = JSON.parse(request.requestBody)
+			this.post("/api/reminders", (schema, request) => {
+				let attrs = JSON.parse(request.requestBody)
 
-                return schema.reminders.create(attrs)
-            })
+				return schema.reminders.create(attrs)
+			});
 
-            this.delete("/api/reminders/:id", (schema, request) => {
-                let id = request.params.id
-                
-                return schema.reminders.find(id).destroy()
-            })
-        }
-    })
+			this.delete("/api/reminders/:id", (schema, request) => {
+				let id = request.params.id
+					
+				return schema.reminders.find(id).destroy()
+			});
+		}
+	})
 }
