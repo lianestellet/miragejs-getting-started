@@ -8,7 +8,7 @@ Happy mocking!
 
 
 
-Steps to run
+Steps to run:
 
 ```
 yarn
